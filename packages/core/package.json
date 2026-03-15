@@ -41,7 +41,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chongkan/identity-resolver.git"
+    "url": "https://github.com/Attestto-com/identity-resolver.git"
   },
   "author": "Eduardo Chongkan",
   "devDependencies": {
