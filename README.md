@@ -26,24 +26,70 @@ This package is the **identity layer that comes after**. It's DNS for compliance
 
 A traditional bank operating under SWIFT/ISO 20022 cannot interact with a DeFi protocol using WalletConnect alone. Before allowing the transaction, the protocol needs to **resolve** the bank's `did:web` or vLEI credential to verify institutional identity and compliance status. No existing wallet connector does this.
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  1. WalletConnect / Phantom            → address + signer       │
-│  2. identity-resolver           → DIDs, KYC, vLEI, SBTs │
-│  3. identity-bridge        → VP request + verify    │
-└──────────────────────────────────────────────────────────────────┘
-     Existing connectors ──┘    Identity middleware ──┘
-```
+<table>
+<tr>
+<td width="60" align="center"><strong>Step</strong></td>
+<td width="280"><strong>Layer</strong></td>
+<td width="60" align="center"><strong>Role</strong></td>
+<td><strong>Output</strong></td>
+</tr>
+<tr>
+<td align="center">1</td>
+<td>WalletConnect / Phantom</td>
+<td align="center">🔌</td>
+<td>Address + signer</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td><strong><a href="https://github.com/Attestto-com/identity-resolver">identity-resolver</a></strong></td>
+<td align="center">🔍</td>
+<td>DIDs, KYC status, vLEI, SBTs, domains</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td><a href="https://github.com/Attestto-com/identity-bridge">identity-bridge</a></td>
+<td align="center">🛡️</td>
+<td>VP request + cryptographic verification</td>
+</tr>
+<tr>
+<td colspan="4" align="center"><em>Existing connectors handle step 1. Steps 2–3 are the identity middleware that crypto wallets are missing.</em></td>
+</tr>
+</table>
 
 ### What you get vs. what exists
 
-| | WalletConnect / Dynamic / Wagmi | identity-resolver |
-|---|---|---|
-| **Purpose** | Connect wallet, sign transactions | Resolve identities from an address |
-| **Input** | User action (QR scan, click) | Wallet address (string) |
-| **Output** | Signer + address | DID Documents, linked identities (`alsoKnownAs`), KYC status, institutional credentials |
-| **When** | Before any interaction | After wallet connection |
-| **Compliance** | None — no identity awareness | FATF Travel Rule, eIDAS 2.0, GLEIF vLEI ready |
+<table>
+<tr>
+<th width="160"></th>
+<th width="320">WalletConnect / Dynamic / Wagmi</th>
+<th width="320">identity-resolver</th>
+</tr>
+<tr>
+<td><strong>Purpose</strong></td>
+<td>Connect wallet, sign transactions</td>
+<td>Resolve identities from an address</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>User action (QR scan, click)</td>
+<td>Wallet address (string)</td>
+</tr>
+<tr>
+<td><strong>Output</strong></td>
+<td>Signer + address</td>
+<td>DID Documents, linked identities (<code>alsoKnownAs</code>), KYC status, institutional credentials</td>
+</tr>
+<tr>
+<td><strong>When</strong></td>
+<td>Before any interaction</td>
+<td>After wallet connection</td>
+</tr>
+<tr>
+<td><strong>Compliance</strong></td>
+<td>None — no identity awareness</td>
+<td>FATF Travel Rule, eIDAS 2.0, GLEIF vLEI ready</td>
+</tr>
+</table>
 
 ### The full stack
 
@@ -52,6 +98,45 @@ A traditional bank operating under SWIFT/ISO 20022 cannot interact with a DeFi p
 3. **[identity-bridge](https://github.com/Attestto-com/identity-bridge)** → discover credential wallet extensions → request Verifiable Presentation → verify cryptographically
 
 Step 1 uses existing connectors. Steps 2–3 are what we built — the identity middleware that MetaMask, Phantom, and every crypto wallet are currently missing. By following W3C CHAPI and DIDComm v2 standards, this stack is already compatible with the regulatory direction of eIDAS 2.0 (EU), FATF Travel Rule, and jurisdictional digital identity wallet mandates.
+
+### How this relates to existing tools
+
+Several projects resolve partial identity data from addresses. None offer a pluggable, multi-chain resolution engine.
+
+<table>
+<tr>
+<th width="200">Project</th>
+<th width="280">What it does</th>
+<th>What it doesn't do</th>
+</tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/@talismn/on-chain-id">@talismn/on-chain-id</a></td>
+<td>Resolves ENS (Ethereum) and Polkadot on-chain identity for addresses</td>
+<td>No Solana. No pluggable provider architecture. No DID resolution, KYC, vLEI, or SBT support.</td>
+</tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/@onchain-id/identity-sdk">@onchain-id/identity-sdk</a></td>
+<td>ERC734/735 identity smart contracts (Ethereum)</td>
+<td>Ethereum-only. Contract-level SDK, not a resolver. Last published 2+ years ago.</td>
+</tr>
+<tr>
+<td><a href="https://spruceid.com/products/sprucekit">SpruceKit (DIDKit)</a></td>
+<td>Issue and verify VCs. Resolve DIDs via <code>did:pkh</code>, <code>did:web</code>, <code>did:key</code></td>
+<td>Resolves a single DID — does not discover <em>all</em> identities attached to an address. No provider plugin system.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/openwallet-foundation/credo-ts">Credo-ts</a></td>
+<td>Full DIDComm + OID4VP agent framework with DID resolution</td>
+<td>Agent framework, not an address-to-identity resolver. Requires running a full agent.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/digitalbazaar/vc">@digitalbazaar/vc</a></td>
+<td>W3C VC issuance and verification (JSON-LD)</td>
+<td>VC operations only. No address-to-identity discovery.</td>
+</tr>
+</table>
+
+**Where identity-resolver fits:** Given a wallet address, no existing package answers "what DIDs, KYC credentials, vLEI attestations, SBTs, and domains are attached to this address?" across multiple chains. identity-resolver is the only pluggable engine where you pick your providers, set their priority, and get a unified `ResolvedIdentity[]` back — with per-provider timeouts, cancellation, and zero hardcoded endpoints.
 
 ## Install
 
@@ -116,11 +201,28 @@ The [DID Landscape Explorer](https://github.com/chongkan/did-landscape-explorer)
 
 **Recommended architecture:**
 
-```
-Browser (no keys, no direct RPC)
-  → Your backend proxy (holds API keys, validates origin)
-    → Solana RPC / Bonfida / UniResolver / Civic
-```
+<table>
+<tr>
+<td width="40" align="center">1</td>
+<td><strong>Browser</strong> — no keys, no direct RPC</td>
+</tr>
+<tr>
+<td align="center">↓</td>
+<td></td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td><strong>Your backend proxy</strong> — holds API keys, validates origin</td>
+</tr>
+<tr>
+<td align="center">↓</td>
+<td></td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td>Solana RPC / Bonfida / UniResolver / Civic</td>
+</tr>
+</table>
 
 ## API
 
@@ -152,14 +254,50 @@ interface ResolvedIdentity {
 
 ## Packages
 
-| Package | Chain | What it resolves | Required options |
-|---|---|---|---|
-| `identity-resolver` | any | Core engine + `pkh()` fallback | — |
-| `@attestto/wir-sns` | Solana | SNS `.sol` domains → `did:sns` | `apiUrl`, `resolverUrl` |
-| `@attestto/wir-ens` | Ethereum | ENS `.eth` domains → `did:ens` | `resolverUrl` |
-| `@attestto/wir-attestto-creds` | Solana | Attestto KYC, identity SBTs, VCs | `programId`, `rpcUrl` |
-| `@attestto/wir-civic` | Solana | Civic Pass gateway tokens | `apiUrl` |
-| `@attestto/wir-sas` | Solana | Solana Attestation Service | `programId`, `rpcUrl` |
+<table>
+<tr>
+<th>Package</th>
+<th>Chain</th>
+<th>What it resolves</th>
+<th>Required options</th>
+</tr>
+<tr>
+<td><code>identity-resolver</code></td>
+<td>any</td>
+<td>Core engine + <code>pkh()</code> fallback</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>@attestto/wir-sns</code></td>
+<td>Solana</td>
+<td>SNS <code>.sol</code> domains → <code>did:sns</code></td>
+<td><code>apiUrl</code>, <code>resolverUrl</code></td>
+</tr>
+<tr>
+<td><code>@attestto/wir-ens</code></td>
+<td>Ethereum</td>
+<td>ENS <code>.eth</code> domains → <code>did:ens</code></td>
+<td><code>resolverUrl</code></td>
+</tr>
+<tr>
+<td><code>@attestto/wir-attestto-creds</code></td>
+<td>Solana</td>
+<td>Attestto KYC, identity SBTs, VCs</td>
+<td><code>programId</code>, <code>rpcUrl</code></td>
+</tr>
+<tr>
+<td><code>@attestto/wir-civic</code></td>
+<td>Solana</td>
+<td>Civic Pass gateway tokens</td>
+<td><code>apiUrl</code></td>
+</tr>
+<tr>
+<td><code>@attestto/wir-sas</code></td>
+<td>Solana</td>
+<td>Solana Attestation Service</td>
+<td><code>programId</code>, <code>rpcUrl</code></td>
+</tr>
+</table>
 
 ## Writing a Custom Provider
 
@@ -280,14 +418,36 @@ To share your provider as an npm package:
 
 ### Provider Rules
 
-| Rule | Why |
-|---|---|
-| **No hardcoded URLs** | Consumer controls infrastructure, keys, CORS |
-| **Never throw from `resolve()`** | One broken provider must not crash the chain |
-| **Return `[]` on failure** | Empty = nothing found, engine moves on |
-| **Pass `ctx.signal` to fetch** | Supports cancellation and timeouts |
-| **Use `meta` for extras** | Don't extend `ResolvedIdentity` — put provider-specific data in `meta` |
-| **One provider = one source** | Keep providers focused (SNS, Civic, etc.) |
+<table>
+<tr>
+<th width="240">Rule</th>
+<th>Why</th>
+</tr>
+<tr>
+<td><strong>No hardcoded URLs</strong></td>
+<td>Consumer controls infrastructure, keys, CORS</td>
+</tr>
+<tr>
+<td><strong>Never throw from <code>resolve()</code></strong></td>
+<td>One broken provider must not crash the chain</td>
+</tr>
+<tr>
+<td><strong>Return <code>[]</code> on failure</strong></td>
+<td>Empty = nothing found, engine moves on</td>
+</tr>
+<tr>
+<td><strong>Pass <code>ctx.signal</code> to fetch</strong></td>
+<td>Supports cancellation and timeouts</td>
+</tr>
+<tr>
+<td><strong>Use <code>meta</code> for extras</strong></td>
+<td>Don't extend <code>ResolvedIdentity</code> — put provider-specific data in <code>meta</code></td>
+</tr>
+<tr>
+<td><strong>One provider = one source</strong></td>
+<td>Keep providers focused (SNS, Civic, etc.)</td>
+</tr>
+</table>
 
 ## Development
 
