@@ -5,64 +5,91 @@ Thanks for your interest in expanding on-chain identity discovery.
 ## Getting Started
 
 ```bash
-git clone https://github.com/chongkan/wallet-identity-resolver.git
+git clone https://github.com/Attestto-com/wallet-identity-resolver.git
 cd wallet-identity-resolver
-npm install
-npm run lint    # Type-check
-npm run build   # Build ESM + CJS + declarations
+pnpm install
+pnpm run build    # Build all packages
+pnpm run lint     # Type-check all packages
 ```
 
-## Project Structure
+## Monorepo Structure
 
 ```
-src/
-  index.ts              — Public API barrel export
-  types.ts              — Core interfaces (IdentityProvider, ResolvedIdentity, etc.)
-  resolve.ts            — Resolution engine (runs providers, handles timeouts)
-  providers/
-    index.ts            — Provider barrel export
-    pkh.ts              — did:pkh fallback (all chains)
-    sns.ts              — SNS domains → did:sns (Solana)
-    ens.ts              — ENS domains → did:ens (Ethereum)
-    civic.ts            — Civic Pass gateway tokens (Solana)
-    attestto-ssid.ts    — Attestto SSID soulbound tokens (Solana)
-    sas.ts              — Solana Attestation Service
+packages/
+  core/              → wallet-identity-resolver        (engine + pkh fallback)
+  sns/               → @attestto/wir-sns               (SNS .sol domains)
+  ens/               → @attestto/wir-ens               (ENS .eth domains)
+  civic/             → @attestto/wir-civic             (Civic Pass tokens)
+  attestto-creds/    → @attestto/wir-attestto-creds    (Attestto credentials + SBTs)
+  sas/               → @attestto/wir-sas               (Solana Attestation Service)
 ```
 
-## How to Contribute
+## Adding a New Provider
 
-### Adding a new provider
+The most common contribution. Each provider lives in its own package under `packages/`.
 
-This is the most common contribution. To add support for a new identity source:
+### Checklist
 
-1. Create `src/providers/your-provider.ts`
-2. Implement the `IdentityProvider` interface (see README for full example)
-3. Export it from `src/providers/index.ts`
-4. Re-export from `src/index.ts` for convenience
-5. Add a row to the Built-in Providers table in README
-6. Run `npm run lint && npm run build`
-7. Submit a PR
-
-**Provider checklist:**
-- [ ] Factory function with typed options
-- [ ] `chains` array specifying supported chains
-- [ ] `resolve()` returns empty array on failure (never throws)
-- [ ] Passes `ctx.signal` to all fetch calls
-- [ ] Supports `ctx.rpcUrl` override where applicable
+- [ ] Create `packages/<name>/` with `src/index.ts`, `package.json`, `tsconfig.json`
+- [ ] Export a factory function that returns `IdentityProvider`
+- [ ] Set `wallet-identity-resolver` as a **peer dependency**
+- [ ] Options interface: all endpoints are **required** (no hardcoded URLs)
+- [ ] `resolve()` never throws — returns `[]` on failure
+- [ ] `resolve()` respects `ctx.signal` for cancellation (pass to `fetch`)
+- [ ] `resolve()` supports `ctx.rpcUrl` override where applicable
+- [ ] Provider-specific data goes in `meta`, not custom fields
+- [ ] `name` field is unique and matches the package shortname
+- [ ] `chains` array correctly lists supported chains
 - [ ] JSDoc on the factory function
-- [ ] Added to providers/index.ts and index.ts exports
-- [ ] Documented in README
+- [ ] Add the provider to the root README (Monorepo Structure + Packages table)
+- [ ] Package builds with `pnpm run build`
+- [ ] Types export cleanly (factory function + options interface)
+
+### Package Template
+
+```json
+{
+  "name": "@attestto/wir-<name>",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "lint": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "wallet-identity-resolver": "workspace:^"
+  },
+  "devDependencies": {
+    "wallet-identity-resolver": "workspace:^",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}
+```
+
+See the README's **Writing a Custom Provider** section for a full step-by-step walkthrough with code.
 
 ### Adding support for a new chain
 
 1. No core changes needed — `Chain` type accepts any string
 2. Add providers that support the new chain
-3. Update the `CHAIN_PREFIXES` map in `pkh.ts` if the chain uses did:pkh
+3. Update the `CHAIN_PREFIXES` map in `packages/core/src/providers/pkh.ts` if the chain uses `did:pkh`
 4. Document the chain in README
 
 ### Improving the core engine
 
-The resolution engine in `resolve.ts` is intentionally simple. Proposals welcome for:
+The resolution engine in `packages/core/src/resolve.ts` is intentionally simple. Proposals welcome for:
 - Parallel provider execution (currently sequential)
 - Caching layer
 - Provider health checks
@@ -72,12 +99,12 @@ Open an issue first to discuss before submitting a PR.
 
 ## See It In Action
 
-The [DID Landscape Explorer](https://github.com/chongkan/did-landscape-explorer) uses this package in its self-assessment wizard. When a user connects a Web3 wallet, the explorer resolves all on-chain identities and lets the user pick which DID to sign their assessment with.
+The [DID Landscape Explorer](https://github.com/chongkan/did-landscape-explorer) uses this package in its self-assessment wizard. When a user connects a Web3 wallet, the explorer resolves all on-chain identities and lets the user pick which DID to sign with.
 
 ## Design Principles
 
 - **Zero runtime dependencies** — providers use `fetch` only
-- **Consumer controls everything** — which providers, which order, which chains
+- **Consumer controls everything** — which providers, which order, which endpoints
 - **Providers are plugins** — anyone can write one without modifying core
 - **Never throw** — providers return empty arrays on failure
 - **Respect cancellation** — all async work honors `AbortSignal`
@@ -87,7 +114,7 @@ The [DID Landscape Explorer](https://github.com/chongkan/did-landscape-explorer)
 - TypeScript strict mode
 - No runtime dependencies (devDependencies only)
 - JSDoc on all public APIs
-- One file per provider
+- One package per provider
 
 ## License
 

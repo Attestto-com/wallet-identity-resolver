@@ -126,31 +126,131 @@ interface ResolvedIdentity {
 
 ## Writing a Custom Provider
 
-```ts
-import type { IdentityProvider, ResolvedIdentity, ResolveContext } from 'wallet-identity-resolver'
+Any identity source can become a provider. Follow these steps:
 
-export function myProvider(options: { apiUrl: string }): IdentityProvider {
+### Step 1 — Define your options
+
+Create an interface for the configuration your provider needs. All network endpoints must be **required** (no hardcoded URLs).
+
+```ts
+interface MyProviderOptions {
+  /** Your API endpoint — consumer must provide this (required) */
+  apiUrl: string
+  /** Optional filter */
+  category?: string
+}
+```
+
+### Step 2 — Create the factory function
+
+Export a function that takes your options and returns an `IdentityProvider`. This is the pattern every built-in provider follows.
+
+```ts
+import type { IdentityProvider } from 'wallet-identity-resolver'
+
+export function myProvider(options: MyProviderOptions): IdentityProvider {
+  return {
+    name: 'my-provider',    // Unique name — shows up in ResolvedIdentity.provider
+    chains: ['solana'],      // Which chains you support (use ['*'] for all chains)
+    resolve: async (ctx) => {
+      // ... (Step 3)
+    },
+  }
+}
+```
+
+### Step 3 — Implement `resolve()`
+
+The engine calls `resolve(ctx)` with the wallet address and chain. Your job:
+
+1. Call your data source (API, RPC, on-chain program)
+2. Map results to `ResolvedIdentity[]`
+3. Return `[]` if nothing found — **never throw**
+
+```ts
+import type { IdentityProvider, ResolveContext, ResolvedIdentity } from 'wallet-identity-resolver'
+
+export function myProvider(options: MyProviderOptions): IdentityProvider {
   return {
     name: 'my-provider',
     chains: ['solana'],
 
     async resolve(ctx: ResolveContext): Promise<ResolvedIdentity[]> {
-      if (!options.apiUrl) return []
-      const res = await fetch(`${options.apiUrl}/lookup/${ctx.address}`, { signal: ctx.signal })
-      if (!res.ok) return []
-      const data = await res.json()
-      return [{ provider: 'my-provider', did: data.did, label: data.name, type: 'credential', meta: data }]
+      // ctx.chain   — 'solana', 'ethereum', etc.
+      // ctx.address — the wallet public key / address
+      // ctx.rpcUrl  — optional RPC override from the consumer
+      // ctx.signal  — AbortSignal for cancellation (pass to fetch!)
+
+      try {
+        const res = await fetch(
+          `${options.apiUrl}/lookup/${ctx.address}`,
+          { signal: ctx.signal },
+        )
+        if (!res.ok) return []
+
+        const data = await res.json() as { items: Array<{ name: string; did?: string }> }
+        if (!data.items?.length) return []
+
+        return data.items.map((item) => ({
+          provider: 'my-provider',       // Must match the name above
+          did: item.did ?? null,         // DID string, or null if not applicable
+          label: item.name,              // Human-readable label for display
+          type: 'credential' as const,   // 'domain' | 'sbt' | 'attestation' | 'credential' | 'did' | 'score'
+          meta: { raw: item },           // Anything extra — consumers access via meta
+        }))
+      } catch {
+        return []  // Never throw — return empty on failure
+      }
     },
+  }
+}
+```
+
+### Step 4 — Use it
+
+Pass your provider to `resolveIdentities` alongside any others. Order = priority.
+
+```ts
+import { resolveIdentities, pkh } from 'wallet-identity-resolver'
+import { myProvider } from './my-provider'
+
+const identities = await resolveIdentities({
+  chain: 'solana',
+  address: pubkey,
+  providers: [
+    myProvider({ apiUrl: 'https://my-backend.com/api/lookup' }),
+    pkh(), // always-available fallback
+  ],
+})
+```
+
+### Step 5 (optional) — Publish as a package
+
+To share your provider as an npm package:
+
+1. Name it `@yourorg/wir-<name>` (convention, not required)
+2. Add `wallet-identity-resolver` as a **peer dependency** for type compatibility
+3. Export your factory function + options interface
+
+```json
+{
+  "name": "@yourorg/wir-my-provider",
+  "peerDependencies": {
+    "wallet-identity-resolver": "^0.1.0"
   }
 }
 ```
 
 ### Provider Rules
 
-- **No hardcoded URLs** — accept all endpoints via options
-- **Never throw** — return empty array on failure
-- **Pass `ctx.signal`** to all fetch calls
-- **One provider = one identity source**
+| Rule | Why |
+|---|---|
+| **No hardcoded URLs** | Consumer controls infrastructure, keys, CORS |
+| **Never throw from `resolve()`** | One broken provider must not crash the chain |
+| **Return `[]` on failure** | Empty = nothing found, engine moves on |
+| **Pass `ctx.signal` to fetch** | Supports cancellation and timeouts |
+| **Use `meta` for extras** | Don't extend `ResolvedIdentity` — put provider-specific data in `meta` |
+| **One provider = one source** | Keep providers focused (SNS, Civic, etc.) |
 
 ## Development
 
