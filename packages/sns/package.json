@@ -1,6 +1,6 @@
 {
   "name": "@attestto/wir-sns",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SNS (Solana Name Service) provider for identity-resolver",
   "type": "module",
   "main": "dist/index.cjs",
@@ -8,9 +8,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
@@ -30,10 +30,10 @@
   "license": "MIT",
   "author": "Eduardo Chongkan",
   "peerDependencies": {
-    "identity-resolver": "workspace:*"
+    "identity-resolver": ">=0.2.0"
   },
   "devDependencies": {
-    "identity-resolver": "workspace:*",
+    "identity-resolver": ">=0.2.0",
     "tsup": "^8.0.0",
     "typescript": "^5.4.0"
   }

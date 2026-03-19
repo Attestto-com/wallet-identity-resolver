@@ -8,5 +8,5 @@ export type {
   ResolveOptions,
 } from './types'
 
-// Built-in provider (zero dependencies, always available)
-export { pkh } from './providers'
+// Built-in providers (zero dependencies, always available)
+export { pkh, sns } from './providers'

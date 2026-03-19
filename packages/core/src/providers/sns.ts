@@ -1,16 +1,13 @@
 /**
- * @attestto/wir-sns — SNS (Solana Name Service) provider
+ * did:sns provider — SNS (Solana Name Service) reverse resolution.
  *
- * Reverse-resolves SNS domains for a Solana public key via the Bonfida
- * SNS SDK proxy API, then optionally verifies a DID Document is attached
- * (only Attestto-enabled domains have one).
+ * Resolves SNS .sol domains for a Solana address via the Bonfida
+ * SNS SDK proxy API, with optional favourite domain detection.
  *
- * Also supports favourite domain detection via the Bonfida API.
- *
- * No hardcoded endpoints — consumer must provide the API URL.
+ * No heavy dependencies — uses fetch only.
  */
 
-import type { IdentityProvider, ResolvedIdentity, ResolveContext } from 'identity-resolver'
+import type { IdentityProvider, ResolvedIdentity, ResolveContext } from '../types'
 
 // ---------------------------------------------------------------------------
 // Options
@@ -95,10 +92,6 @@ interface SnsDomainEntry {
   domain: string
 }
 
-/**
- * Reverse-lookup all SNS domains owned by a Solana address.
- * Endpoint: GET /domains/{pubkey}
- */
 async function reverseLookup(
   address: string,
   apiUrl: string,
@@ -120,12 +113,6 @@ async function reverseLookup(
   }
 }
 
-/**
- * Get the favourite (primary) domain for a Solana address.
- * Endpoint: GET /favourite-domain/{pubkey}
- *
- * Returns the domain name string, or null if not set / API unavailable.
- */
 async function getFavouriteDomain(
   address: string,
   apiUrl: string,
@@ -149,9 +136,6 @@ async function getFavouriteDomain(
   }
 }
 
-/**
- * Check if a domain has a DID Document via Universal Resolver.
- */
 async function checkDidDocument(
   domain: string,
   resolverUrl: string,
@@ -169,20 +153,15 @@ async function checkDidDocument(
   }
 }
 
-/**
- * Sort domains: favourite first, then by length (shorter = more personal).
- */
 function sortDomains(
   domains: SnsDomainEntry[],
   favourite: string | null,
 ): SnsDomainEntry[] {
   return [...domains].sort((a, b) => {
-    // Favourite always first
     if (favourite) {
       if (a.domain === favourite) return -1
       if (b.domain === favourite) return 1
     }
-    // Then by length
     return a.domain.length - b.domain.length
   })
 }

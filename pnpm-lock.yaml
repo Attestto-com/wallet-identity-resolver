@@ -17,27 +17,27 @@ importers:
 
   packages/attestto-creds:
     devDependencies:
+      identity-resolver:
+        specifier: workspace:*
+        version: link:../core
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(typescript@5.9.3)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
-      wallet-identity-resolver:
-        specifier: workspace:*
-        version: link:../core
 
   packages/civic:
     devDependencies:
+      identity-resolver:
+        specifier: workspace:*
+        version: link:../core
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(typescript@5.9.3)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
-      wallet-identity-resolver:
-        specifier: workspace:*
-        version: link:../core
 
   packages/core:
     devDependencies:
@@ -50,39 +50,39 @@ importers:
 
   packages/ens:
     devDependencies:
+      identity-resolver:
+        specifier: workspace:*
+        version: link:../core
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(typescript@5.9.3)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
-      wallet-identity-resolver:
-        specifier: workspace:*
-        version: link:../core
 
   packages/sas:
     devDependencies:
+      identity-resolver:
+        specifier: workspace:*
+        version: link:../core
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(typescript@5.9.3)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
-      wallet-identity-resolver:
-        specifier: workspace:*
-        version: link:../core
 
   packages/sns:
     devDependencies:
+      identity-resolver:
+        specifier: workspace:*
+        version: link:../core
       tsup:
         specifier: ^8.0.0
         version: 8.5.1(typescript@5.9.3)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
-      wallet-identity-resolver:
-        specifier: workspace:*
-        version: link:../core
 
 packages:
 
