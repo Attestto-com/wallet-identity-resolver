@@ -33,7 +33,8 @@ export type IdentityType =
   | 'sbt'          // Soulbound tokens, gateway tokens
   | 'attestation'  // SAS, EAS attestations
   | 'credential'   // Verifiable credentials found on-chain
-  | 'did'          // Native DID method (did:sol, did:pkh)
+  | 'did'          // Native DID method (did:sns, did:sol, did:web)
+  | 'address'      // Bare CAIP-10 account — no DID found; resolvers may look up a bound did:sns
   | 'score'        // Reputation/identity scores (Gitcoin Passport)
 
 // ---------------------------------------------------------------------------

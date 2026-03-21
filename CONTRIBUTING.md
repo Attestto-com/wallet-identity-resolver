@@ -16,7 +16,7 @@ pnpm run lint     # Type-check all packages
 
 ```
 packages/
-  core/              → identity-resolver        (engine + pkh fallback)
+  core/              → identity-resolver        (engine + caip10 fallback)
   sns/               → @attestto/wir-sns               (SNS .sol domains)
   ens/               → @attestto/wir-ens               (ENS .eth domains)
   civic/             → @attestto/wir-civic             (Civic Pass tokens)
@@ -84,7 +84,7 @@ See the README's **Writing a Custom Provider** section for a full step-by-step w
 
 1. No core changes needed — `Chain` type accepts any string
 2. Add providers that support the new chain
-3. Update the `CHAIN_PREFIXES` map in `packages/core/src/providers/pkh.ts` if the chain uses `did:pkh`
+3. Update the `CHAIN_PREFIXES` map in `packages/core/src/providers/caip10.ts` and add the CAIP-2 chain ID to `CHAIN_PREFIXES`
 4. Document the chain in README
 
 ### Improving the core engine

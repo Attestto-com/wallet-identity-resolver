@@ -11,21 +11,22 @@ npm install identity-resolver
 ## Quick Start
 
 ```ts
-import { resolveIdentities, sns, pkh } from 'identity-resolver'
+import { resolveIdentities, sns, caip10 } from 'identity-resolver'
 
 const identities = await resolveIdentities({
   chain: 'solana',
   address: 'ATTEstto1234567890abcdef...',
   providers: [
     sns({ apiUrl: '/api/sns', resolverUrl: '/api/resolver' }),
-    pkh(),  // Fallback — always resolves, no network calls
+    caip10(),  // Fallback — always resolves, no network calls
   ],
 })
 
 // Returns: ResolvedIdentity[]
 // [
-//   { provider: 'sns', did: 'did:sns:alice.sol', label: 'alice.sol', type: 'domain', meta: { ... } },
-//   { provider: 'pkh', did: 'did:pkh:solana:5eykt4...:ATTEstto...', label: 'ATTEstto...', type: 'did', meta: {} }
+//   { provider: 'sns', did: 'did:sns:alice.attestto', label: 'alice.attestto', type: 'domain', meta: { ... } },
+//   { provider: 'caip10', did: null, label: 'ATTEst...cdef', type: 'address',
+//     meta: { caip10: 'caip10:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:ATTEstto...' } }
 // ]
 ```
 
@@ -33,8 +34,8 @@ const identities = await resolveIdentities({
 
 | Provider | Type | Network calls |
 |---|---|---|
-| `pkh()` | `did:pkh` fallback | None — deterministic DID from address |
-| `sns(opts)` | SNS `.sol` domains | `apiUrl` for domain lookup, `resolverUrl` for DID Document |
+| `caip10()` | Bare CAIP-10 degraded fallback | None — deterministic from address |
+| `sns(opts)` | SNS `.sol` domains → `did:sns` | `apiUrl` for domain lookup, `resolverUrl` for DID Document |
 
 ## External Providers
 
@@ -70,7 +71,7 @@ interface ResolvedIdentity {
   provider: string                // Which provider found this
   did: string | null              // Resolved DID, if applicable
   label: string                   // Human-readable label
-  type: IdentityType              // 'domain' | 'sbt' | 'attestation' | 'credential' | 'did' | 'score'
+  type: IdentityType              // 'domain' | 'sbt' | 'attestation' | 'credential' | 'did' | 'address' | 'score'
   meta: Record<string, unknown>   // Provider-specific metadata
 }
 ```

@@ -9,4 +9,4 @@ export type {
 } from './types'
 
 // Built-in providers (zero dependencies, always available)
-export { pkh, sns } from './providers'
+export { caip10, sns } from './providers'

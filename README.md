@@ -10,11 +10,11 @@ flowchart TB
     B --> C["SNS Provider"]
     B --> D["Attestto Creds Provider"]
     B --> E["Civic Provider"]
-    B --> F["pkh() fallback"]
+    B --> F["caip10() fallback"]
     C -->|"did:sns:alice.sol"| G["ResolvedIdentity[]"]
     D -->|"KYC VC + SBT"| G
     E -->|"Civic Pass token"| G
-    F -->|"did:pkh:solana:..."| G
+    F -->|"caip10:solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:..."| G
     G --> H["Unified results — ordered by provider priority"]
 
     style A fill:#1a1a2e,stroke:#7c3aed,color:#e0e0e0
@@ -26,7 +26,7 @@ flowchart TB
 
 ```
 packages/
-  core/           → identity-resolver       (engine + pkh fallback)
+  core/           → identity-resolver       (engine + caip10 fallback)
   sns/            → @attestto/wir-sns              (SNS .sol domains → did:sns)
   ens/            → @attestto/wir-ens              (ENS .eth domains → did:ens)
   attestto-creds/ → @attestto/wir-attestto-creds   (KYC, SBTs, VCs)
@@ -139,7 +139,7 @@ Several projects resolve partial identity data from addresses. None offer a plug
 </tr>
 <tr>
 <td><a href="https://spruceid.com/products/sprucekit">SpruceKit (DIDKit)</a></td>
-<td>Issue and verify VCs. Resolve DIDs via <code>did:pkh</code>, <code>did:web</code>, <code>did:key</code></td>
+<td>Issue and verify VCs. Resolve DIDs via <code>did:sns</code>, <code>did:web</code>, <code>did:key</code></td>
 <td>Resolves a single DID — does not discover <em>all</em> identities attached to an address. No provider plugin system.</td>
 </tr>
 <tr>
@@ -173,7 +173,7 @@ import { resolveIdentities } from 'identity-resolver'
 import { sns } from '@attestto/wir-sns'
 import { attesttoCreds } from '@attestto/wir-attestto-creds'
 import { civic } from '@attestto/wir-civic'
-import { pkh } from 'identity-resolver'
+import { caip10 } from 'identity-resolver'
 
 const identities = await resolveIdentities({
   chain: 'solana',
@@ -188,7 +188,7 @@ const identities = await resolveIdentities({
       resolverUrl: 'https://api.yourapp.com/resolver',
     }),
     civic({ apiUrl: 'https://api.yourapp.com/civic' }),
-    pkh(),  // Fallback — always resolves, no network calls
+    caip10(),  // Fallback — always resolves, no network calls
   ],
 })
 ```
@@ -196,7 +196,7 @@ const identities = await resolveIdentities({
 ### Ethereum
 
 ```ts
-import { resolveIdentities, pkh } from 'identity-resolver'
+import { resolveIdentities, caip10 } from 'identity-resolver'
 import { ens } from '@attestto/wir-ens'
 
 const identities = await resolveIdentities({
@@ -204,7 +204,7 @@ const identities = await resolveIdentities({
   address: '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045',
   providers: [
     ens({ resolverUrl: 'https://api.yourapp.com/resolver' }),
-    pkh(),
+    caip10(),
   ],
 })
 ```
@@ -268,7 +268,7 @@ interface ResolvedIdentity {
 <tr>
 <td><code>identity-resolver</code></td>
 <td>any</td>
-<td>Core engine + <code>pkh()</code> fallback</td>
+<td>Core engine + <code>caip10()</code> fallback</td>
 <td>—</td>
 </tr>
 <tr>
@@ -390,7 +390,7 @@ export function myProvider(options: MyProviderOptions): IdentityProvider {
 Pass your provider to `resolveIdentities` alongside any others. Order = priority.
 
 ```ts
-import { resolveIdentities, pkh } from 'identity-resolver'
+import { resolveIdentities, caip10 } from 'identity-resolver'
 import { myProvider } from './my-provider'
 
 const identities = await resolveIdentities({
@@ -398,7 +398,7 @@ const identities = await resolveIdentities({
   address: pubkey,
   providers: [
     myProvider({ apiUrl: 'https://my-backend.com/api/lookup' }),
-    pkh(), // always-available fallback
+    caip10(), // always-available fallback
   ],
 })
 ```

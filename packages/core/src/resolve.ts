@@ -16,12 +16,12 @@ import type { ResolveOptions, ResolvedIdentity, ResolveContext } from './types'
  * @example
  * ```ts
  * import { resolveIdentities } from 'identity-resolver'
- * import { sns, civic, pkh } from 'identity-resolver/providers'
+ * import { sns, civic, caip10 } from 'identity-resolver/providers'
  *
  * const identities = await resolveIdentities({
  *   chain: 'solana',
  *   address: pubkey,
- *   providers: [sns({ requireDidDocument: true }), civic(), pkh()],
+ *   providers: [sns({ requireDidDocument: true }), civic(), caip10()],
  * })
  * ```
  */
