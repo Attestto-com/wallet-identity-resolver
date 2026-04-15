@@ -1,8 +1,14 @@
-# identity-resolver
+# @attestto/wallet-identity-resolver
 
-Pluggable on-chain identity discovery for wallet addresses. Given a wallet address and chain, discover all DIDs, SBTs, attestations, and credentials attached to it.
+[![npm version](https://img.shields.io/npm/v/@attestto/wallet-identity-resolver)](https://www.npmjs.com/package/@attestto/wallet-identity-resolver)
 
-The consumer decides which identity types to accept and in what priority — no hardcoded assumptions, no hardcoded endpoints.
+> Given a wallet address and chain, discover all DIDs, SBTs, attestations, and credentials attached to it. Pluggable providers, pluggable priorities.
+
+`@attestto/wallet-identity-resolver` is the identity middleware that runs after wallet connection. WalletConnect, Phantom, and Wagmi give you an address and a signer — they stop there. `@attestto/wallet-identity-resolver` takes that address and resolves the full identity graph: DIDs (did:sns, did:ens, did:web), SNS/ENS domains, KYC credentials, Civic passes, Soulbound Tokens, vLEI attestations. You pick which providers to trust and in what priority order.
+
+Part of the [Attestto](https://attestto.org) open identity ecosystem.
+
+## Architecture
 
 ```mermaid
 flowchart TB
@@ -22,19 +28,71 @@ flowchart TB
     style H fill:#1a1a2e,stroke:#10b981,color:#e0e0e0
 ```
 
-## Monorepo Structure
+The consumer (your dApp) decides which identity types to accept and in what priority — no hardcoded assumptions, no hardcoded endpoints.
+
+## Quick start
+
+### Prerequisites
+
+- Node.js 16+
+- A wallet address to resolve
+- At least one identity provider configured
+
+### Install
+
+```bash
+# Core engine (required)
+npm install @attestto/wallet-identity-resolver
+
+# Provider plugins (install only what you need)
+npm install @attestto/wir-sns        # SNS .sol domains → did:sns
+npm install @attestto/wir-ens        # ENS .eth domains → did:ens
+npm install @attestto/wir-attestto-creds  # Attestto KYC VCs + SBTs
+npm install @attestto/wir-civic      # Civic Pass gateway tokens
+npm install @attestto/wir-sas        # Solana Attestation Service
+```
+
+### Try it
+
+```ts
+import { resolveIdentities } from '@attestto/wallet-identity-resolver'
+import { sns } from '@attestto/wir-sns'
+import { attesttoCreds } from '@attestto/wir-attestto-creds'
+import { civic } from '@attestto/wir-civic'
+import { caip10 } from '@attestto/wallet-identity-resolver'
+
+const identities = await resolveIdentities({
+  chain: 'solana',
+  address: 'ATTEstto1234567890abcdef...',
+  providers: [
+    attesttoCreds({ programId: '...', rpcUrl: '...' }),
+    sns({ apiUrl: '...', resolverUrl: '...' }),
+    civic({ apiUrl: '...' }),
+    caip10(),  // Fallback — always resolves
+  ],
+})
+
+// identities: ResolvedIdentity[]
+// Each entry: { provider, did, label, type, meta }
+```
+
+The engine tries each provider in order. If one finds results, you get those (plus caip10 fallback). If none find anything, you still get a caip10 result that's valid for any address on any chain.
+
+### Monorepo packages
 
 ```
 packages/
-  core/           → identity-resolver       (engine + caip10 fallback)
-  sns/            → @attestto/wir-sns              (SNS .sol domains → did:sns)
-  ens/            → @attestto/wir-ens              (ENS .eth domains → did:ens)
-  attestto-creds/ → @attestto/wir-attestto-creds   (KYC, SBTs, VCs)
-  civic/          → @attestto/wir-civic            (Civic Pass gateway tokens)
-  sas/            → @attestto/wir-sas              (Solana Attestation Service)
+  core/           → @attestto/wallet-identity-resolver  (engine + caip10 fallback)
+  sns/            → @attestto/wir-sns                  (SNS .sol domains → did:sns)
+  ens/            → @attestto/wir-ens                  (ENS .eth domains → did:ens)
+  attestto-creds/ → @attestto/wir-attestto-creds       (KYC, SBTs, VCs)
+  civic/          → @attestto/wir-civic                (Civic Pass gateway tokens)
+  sas/            → @attestto/wir-sas                  (Solana Attestation Service)
 ```
 
-## Identity Middleware — not a wallet connector
+## What this is
+
+### Identity Middleware — not a wallet connector
 
 WalletConnect, Dynamic, and Wagmi are **crypto wallet connectors**. They connect MetaMask, Phantom, and Ledger to dApps for **transaction signing**. Once connected, they give you an address and a signer. That's where they stop.
 
@@ -65,7 +123,7 @@ A traditional bank operating under SWIFT/ISO 20022 cannot interact with a DeFi p
 </tr>
 <tr>
 <td align="center">3</td>
-<td><a href="https://github.com/Attestto-com/identity-bridge">identity-bridge</a></td>
+<td><a href="https://github.com/Attestto-com/id-wallet-adapter">id-wallet-adapter</a></td>
 <td align="center">🛡️</td>
 <td>VP request + cryptographic verification</td>
 </tr>
@@ -113,7 +171,7 @@ A traditional bank operating under SWIFT/ISO 20022 cannot interact with a DeFi p
 
 1. **WalletConnect** → connect Solana/Ethereum wallet → get address
 2. **identity-resolver** → resolve that address → find SNS domain, Attestto credentials, Civic pass, vLEI attestation
-3. **[identity-bridge](https://github.com/Attestto-com/identity-bridge)** → discover credential wallet extensions → request Verifiable Presentation → verify cryptographically
+3. **[id-wallet-adapter](https://github.com/Attestto-com/id-wallet-adapter)** → discover credential wallet extensions → request Verifiable Presentation → verify cryptographically
 
 Step 1 uses existing connectors. Steps 2–3 are what we built — the identity middleware that MetaMask, Phantom, and every crypto wallet are currently missing. By following W3C CHAPI and DIDComm v2 standards, this stack is already compatible with the regulatory direction of eIDAS 2.0 (EU), FATF Travel Rule, and jurisdictional digital identity wallet mandates.
 
@@ -138,9 +196,9 @@ Several projects resolve partial identity data from addresses. None offer a plug
 <td>Ethereum-only. Contract-level SDK, not a resolver. Last published 2+ years ago.</td>
 </tr>
 <tr>
-<td><a href="https://spruceid.com/products/sprucekit">SpruceKit (DIDKit)</a></td>
-<td>Issue and verify VCs. Resolve DIDs via <code>did:sns</code>, <code>did:web</code>, <code>did:key</code></td>
-<td>Resolves a single DID — does not discover <em>all</em> identities attached to an address. No provider plugin system.</td>
+<td>DID-native VC toolkits</td>
+<td>Issue and verify VCs. Resolve DIDs via <code>did:web</code>, <code>did:key</code>, etc.</td>
+<td>Resolve a single DID — do not discover <em>all</em> identities attached to an address. No provider plugin system.</td>
 </tr>
 <tr>
 <td><a href="https://github.com/openwallet-foundation/credo-ts">Credo-ts</a></td>
@@ -156,47 +214,109 @@ Several projects resolve partial identity data from addresses. None offer a plug
 
 **Where identity-resolver fits:** Given a wallet address, no existing package answers "what DIDs, KYC credentials, vLEI attestations, SBTs, and domains are attached to this address?" across multiple chains. identity-resolver is the only pluggable engine where you pick your providers, set their priority, and get a unified `ResolvedIdentity[]` back — with per-provider timeouts, cancellation, and zero hardcoded endpoints.
 
-## Install
+## API / Key concepts
+
+### `resolveIdentities(options): Promise<ResolvedIdentity[]>`
+
+Core function that discovers all identities attached to a wallet address.
+
+```ts
+interface ResolveOptions {
+  chain: Chain                    // 'solana', 'ethereum', or custom
+  address: string                 // Wallet address / public key
+  providers: IdentityProvider[]   // Ordered list — defines priority
+  rpcUrl?: string                 // Global RPC override (passed to providers)
+  timeoutMs?: number              // Per-provider timeout (default 5000ms)
+  stopOnFirst?: boolean           // Stop after first provider returns results
+  signal?: AbortSignal            // Cancellation
+}
+```
+
+### `ResolvedIdentity`
+
+Result from a single provider:
+
+```ts
+interface ResolvedIdentity {
+  provider: string                // Which provider found this
+  did: string | null              // Resolved DID, if applicable
+  label: string                   // Human-readable label
+  type: IdentityType              // 'domain' | 'sbt' | 'attestation' | 'credential' | 'did' | 'score'
+  meta: Record<string, unknown>   // Provider-specific metadata
+}
+```
+
+### IdentityProvider interface
+
+Implement this to create a custom identity provider:
+
+```ts
+interface IdentityProvider {
+  name: string
+  chains: string[]  // Which chains you support
+  resolve(ctx: ResolveContext): Promise<ResolvedIdentity[]>
+}
+
+interface ResolveContext {
+  chain: string
+  address: string
+  rpcUrl?: string
+  signal?: AbortSignal
+}
+```
+
+### Multi-provider fallback chain
+
+Providers are tried in order. Order = priority. The engine guarantees:
+
+1. Try each provider in the order you pass them
+2. Collect all results
+3. If nothing found, return `caip10()` fallback (valid for any address on any chain)
+4. If `stopOnFirst: true`, stop after the first provider that returns results
+
+## Ecosystem
+
+Related repos in the Attestto ecosystem:
+
+| Package | Purpose | Repo |
+|---|---|---|
+| **@attestto/id-wallet-adapter** | Discover credential wallet extensions, request and verify Verifiable Presentations | [GitHub](https://github.com/Attestto-com/id-wallet-adapter) |
+| **@attestto/verify** | Web Components for wallet discovery, signing, and VP verification | [GitHub](https://github.com/Attestto-com/verify) |
+| **@attestto/vc-sdk** | Issue and verify W3C Verifiable Credentials | [GitHub](https://github.com/Attestto-com/vc-sdk) |
+| **did-sns-spec** | `did:sns` DID method spec — Solana domain to DID resolution | [GitHub](https://github.com/Attestto-com/did-sns-spec) |
+| **vLEI-Solana-Bridge** | Write and verify vLEI attestations from GLEIF on Solana | [GitHub](https://github.com/Attestto-com/vLEI-Solana-Bridge) |
+
+## Build with an LLM
+
+This repo ships a [`llms.txt`](./llms.txt) context file — a machine-readable summary of the API, data structures, and integration patterns designed to be read by AI coding assistants.
+
+### Recommended setup
+
+Use the [`attestto-dev-mcp`](../attestto-dev-mcp) server to give your LLM active access to the ecosystem:
 
 ```bash
-# Core (required)
-npm install identity-resolver
-
-# Pick the providers you need
-npm install @attestto/wir-sns @attestto/wir-attestto-creds @attestto/wir-civic
+cd ../attestto-dev-mcp
+npm install && npm run build
 ```
 
-## Quick Start
+Then add it to your Claude / Cursor / Windsurf config and ask:
+
+> *"Explore the Attestto ecosystem and scaffold me an on-chain identity resolver"*
+
+### Which model?
+
+We recommend **[Claude](https://claude.ai) Pro** (5× usage vs free) or higher. Long context and strong TypeScript reasoning handle this codebase well. The MCP server works with any LLM that supports tool use.
+
+> **Quick start:** Ask your LLM to read `llms.txt` in this repo, then describe what you want to build. It will find the right archetype, generate boilerplate, and walk you through the first run.
+
+## Examples
+
+The [DID Landscape Explorer](https://github.com/chongkan/did-landscape-explorer) uses this package in its self-assessment wizard. When a user connects a Web3 wallet, the explorer resolves all identities attached to their address and lets them pick which DID to sign with.
+
+### Ethereum example
 
 ```ts
-import { resolveIdentities } from 'identity-resolver'
-import { sns } from '@attestto/wir-sns'
-import { attesttoCreds } from '@attestto/wir-attestto-creds'
-import { civic } from '@attestto/wir-civic'
-import { caip10 } from 'identity-resolver'
-
-const identities = await resolveIdentities({
-  chain: 'solana',
-  address: 'ATTEstto1234567890abcdef...',
-  providers: [
-    attesttoCreds({
-      programId: 'YOUR_PROGRAM_ID',
-      rpcUrl: 'https://api.yourapp.com/solana-rpc',
-    }),
-    sns({
-      apiUrl: 'https://api.yourapp.com/sns',
-      resolverUrl: 'https://api.yourapp.com/resolver',
-    }),
-    civic({ apiUrl: 'https://api.yourapp.com/civic' }),
-    caip10(),  // Fallback — always resolves, no network calls
-  ],
-})
-```
-
-### Ethereum
-
-```ts
-import { resolveIdentities, caip10 } from 'identity-resolver'
+import { resolveIdentities, caip10 } from '@attestto/wallet-identity-resolver'
 import { ens } from '@attestto/wir-ens'
 
 const identities = await resolveIdentities({
@@ -208,10 +328,6 @@ const identities = await resolveIdentities({
   ],
 })
 ```
-
-## See It In Action
-
-The [DID Landscape Explorer](https://github.com/chongkan/did-landscape-explorer) uses this package in its self-assessment wizard. When a user connects a Web3 wallet, the explorer resolves all identities attached to their address and lets them pick which DID to sign with.
 
 ## Security
 
@@ -228,80 +344,16 @@ flowchart LR
     B --> F[Civic]
 ```
 
-## API
+## Provider packages reference
 
-### `resolveIdentities(options): Promise<ResolvedIdentity[]>`
-
-```ts
-interface ResolveOptions {
-  chain: Chain                    // 'solana', 'ethereum', or custom
-  address: string                 // Wallet address / public key
-  providers: IdentityProvider[]   // Ordered list — defines priority
-  rpcUrl?: string                 // Global RPC override (passed to providers)
-  timeoutMs?: number              // Per-provider timeout (default 5000ms)
-  stopOnFirst?: boolean           // Stop after first provider returns results
-  signal?: AbortSignal            // Cancellation
-}
-```
-
-### `ResolvedIdentity`
-
-```ts
-interface ResolvedIdentity {
-  provider: string                // Which provider found this
-  did: string | null              // Resolved DID, if applicable
-  label: string                   // Human-readable label
-  type: IdentityType              // 'domain' | 'sbt' | 'attestation' | 'credential' | 'did' | 'score'
-  meta: Record<string, unknown>   // Provider-specific metadata
-}
-```
-
-## Packages
-
-<table>
-<tr>
-<th>Package</th>
-<th>Chain</th>
-<th>What it resolves</th>
-<th>Required options</th>
-</tr>
-<tr>
-<td><code>identity-resolver</code></td>
-<td>any</td>
-<td>Core engine + <code>caip10()</code> fallback</td>
-<td>—</td>
-</tr>
-<tr>
-<td><code>@attestto/wir-sns</code></td>
-<td>Solana</td>
-<td>SNS <code>.sol</code> domains → <code>did:sns</code></td>
-<td><code>apiUrl</code>, <code>resolverUrl</code></td>
-</tr>
-<tr>
-<td><code>@attestto/wir-ens</code></td>
-<td>Ethereum</td>
-<td>ENS <code>.eth</code> domains → <code>did:ens</code></td>
-<td><code>resolverUrl</code></td>
-</tr>
-<tr>
-<td><code>@attestto/wir-attestto-creds</code></td>
-<td>Solana</td>
-<td>Attestto KYC, identity SBTs, VCs</td>
-<td><code>programId</code>, <code>rpcUrl</code></td>
-</tr>
-<tr>
-<td><code>@attestto/wir-civic</code></td>
-<td>Solana</td>
-<td>Civic Pass gateway tokens</td>
-<td><code>apiUrl</code></td>
-</tr>
-<tr>
-<td><code>@attestto/wir-sas</code></td>
-<td>Solana</td>
-<td>Solana Attestation Service</td>
-<td><code>programId</code>, <code>rpcUrl</code></td>
-</tr>
-</table>
+| Package | Chain | What it resolves | Required options |
+|---|---|---|---|
+| `@attestto/wallet-identity-resolver` | any | Core engine + `caip10()` fallback | — |
+| `@attestto/wir-sns` | Solana | SNS `.sol` domains → `did:sns` | `apiUrl`, `resolverUrl` |
+| `@attestto/wir-ens` | Ethereum | ENS `.eth` domains → `did:ens` | `resolverUrl` |
+| `@attestto/wir-attestto-creds` | Solana | Attestto KYC, identity SBTs, VCs | `programId`, `rpcUrl` |
+| `@attestto/wir-civic` | Solana | Civic Pass gateway tokens | `apiUrl` |
+| `@attestto/wir-sas` | Solana | Solana Attestation Service | `programId`, `rpcUrl` |
 
 ## Writing a Custom Provider
 

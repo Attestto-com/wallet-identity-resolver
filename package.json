@@ -1,6 +1,23 @@
 {
   "name": "identity-resolver-monorepo",
   "private": true,
+  "description": "Pluggable identity resolution engine — resolve DIDs, credentials, SBTs, and domains from any wallet address",
+  "keywords": [
+    "identity",
+    "did",
+    "wallet",
+    "resolver",
+    "verifiable-credentials",
+    "sbt",
+    "solana",
+    "ethereum",
+    "attestto"
+  ],
+  "homepage": "https://github.com/Attestto-com/identity-resolver#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Attestto-com/identity-resolver.git"
+  },
   "scripts": {
     "build": "pnpm -r run build",
     "lint": "pnpm -r run lint"
